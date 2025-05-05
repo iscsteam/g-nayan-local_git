@@ -1,4 +1,33 @@
-version: '3.8'
+# services:
+#   fastapi:
+#     build: .
+#     container_name: fastapi_app_local_dr
+#     ports:
+#       - "8000:8000"
+#     environment:
+#       - MINIO_ENDPOINT=http://minio:9000
+#       - MINIO_ACCESS_KEY=minioadmin
+#       - MINIO_SECRET_KEY=minioadmin123
+#     depends_on:
+#       - minio
+#     volumes:
+#       - .:/app
+#   minio:
+#     image: minio/minio
+#     container_name: minio
+#     ports:
+#       - "9000:9000"
+#       - "9001:9001"
+#     environment:
+#       MINIO_ROOT_USER: minioadmin
+#       MINIO_ROOT_PASSWORD: minioadmin123
+#     volumes:
+#       - minio_data:/data
+#     command: server /data --console-address ":9001"
+
+# volumes:
+#   minio_data:
+#     driver: local  # Using the default local driver
 
 services:
   fastapi:
@@ -12,8 +41,28 @@ services:
       - MINIO_SECRET_KEY=minioadmin123
     depends_on:
       - minio
+      - mysql
     volumes:
       - .:/app
+    networks:
+      - app-network
+    restart: always
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: Iscs@123
+      MYSQL_DATABASE: iscs_db
+      MYSQL_USER: iscs
+      MYSQL_PASSWORD: Iscs@123
+    ports:
+      - "3306:3306"  # Expose MySQL to the host on port 3306
+    volumes:
+      - mysql-data:/var/lib/mysql  # Persist MySQL data across container restarts
+    networks:
+      - app-network
+    restart: always
 
   minio:
     image: minio/minio
@@ -27,7 +76,16 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    networks:
+      - app-network
+    restart: always
 
 volumes:
+  mysql-data:
+    driver: local  # Persist MySQL data
   minio_data:
-    driver: local  # Using the default local driver
+    driver: local  # Persist MinIO data
+
+networks:
+  app-network:
+    driver: bridge

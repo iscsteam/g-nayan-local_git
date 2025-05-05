@@ -20,7 +20,6 @@ from io import BytesIO
 from PIL import Image
 import yaml  
 import configparser
-import psycopg2
 from typing import Dict
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -39,7 +38,7 @@ from datetime import timedelta
 from config import connection
 
 connection=connection()
-
+print(connection)
 app = FastAPI(title="FastAPI for DR", description="Diabetic Retinopathy Detection API", version="1.0.0")
 # Adding session middleware
 app.add_middleware(SessionMiddleware, secret_key="444555")
@@ -52,12 +51,28 @@ app.add_middleware(
 )
 
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logging.basicConfig(
     filename='api_hits.log',
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(DEVICE)
+
+
+# # Log the device info
+# logging.info(f"Using device: {DEVICE}")
+
+# if DEVICE.type == "cuda":
+#     gpu_name = torch.cuda.get_device_name(0)
+#     logging.info(f"GPU name: {gpu_name}")
+#     memory_allocated = torch.cuda.memory_allocated(0) / 1024**3
+#     memory_reserved = torch.cuda.memory_reserved(0) / 1024**3
+#     logging.info(f"Memory Allocated: {memory_allocated:.2f} GB")
+#     logging.info(f"Memory Reserved: {memory_reserved:.2f} GB")
+# else:
+#     logging.warning("CUDA not available. Using CPU.")
 
 # Initialize MinIO client
 minio_client = Minio(

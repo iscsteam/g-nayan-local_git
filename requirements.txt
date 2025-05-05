@@ -7,7 +7,6 @@ requests
 uvicorn
 python-multipart
 pyyaml
-psycopg2-binary
 starlette
 itsdangerous
 python-dotenv
@@ -16,4 +15,5 @@ efficientnet_pytorch
 minio
 torch
 torchvision
+mysql-connector-python
 #psycopg2

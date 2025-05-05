@@ -1,7 +1,0 @@
-2025-04-21 08:42:34,285 - INFO - [START] Inference API hit for patient: 232 from 172.18.0.1
-2025-04-21 08:43:18,175 - INFO - [START] Inference API hit for patient: 232 from 172.18.0.1
-2025-04-21 08:43:20,228 - INFO - [SUCCESS] Processed inference for 232 | Duration: 2.05s
-2025-04-21 08:44:08,543 - INFO - [START] Inference API hit for patient: 233 from 172.18.0.1
-2025-04-21 08:44:10,399 - INFO - [SUCCESS] Processed inference for 233 | Duration: 1.86s
-2025-04-21 08:44:55,960 - INFO - [START] Inference API hit for patient: 122 from 172.18.0.1
-2025-04-21 08:45:01,443 - INFO - [SUCCESS] Processed inference for 122 | Duration: 5.48s

@@ -1,0 +1,9 @@
+# Ignore Jupyter notebook work directory
+jupyter_notebook_works/
+
+# Ignore Python bytecode cache
+__pycache__/
+*.py[cod]
+
+# Ignore Jupyter notebook file
+non-fundus.ipynb
