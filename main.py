@@ -12,7 +12,7 @@ import cv2
 import time
 import uvicorn
 import requests
-import logging
+import logger
 from datetime import datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
 import requests
@@ -25,9 +25,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from dotenv import load_dotenv
 import warnings
-import logging
+import logger
 from efficientnet_pytorch import EfficientNet
-# Ignore all DeprecationWarnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 from datetime import datetime
 import pytz
@@ -36,10 +35,18 @@ from minio import Minio
 from minio.error import S3Error
 from datetime import timedelta
 from config import connection
+import logger
+from logger import get_logger
+from database_crud_operation.database_operations import data_from_db
+from prometheus_fastapi_instrumentator import Instrumentator
 
+#mysql connection
 connection=connection()
-print(connection)
+
 app = FastAPI(title="FastAPI for DR", description="Diabetic Retinopathy Detection API", version="1.0.0")
+
+
+
 # Adding session middleware
 app.add_middleware(SessionMiddleware, secret_key="444555")
 app.add_middleware(
@@ -51,28 +58,15 @@ app.add_middleware(
 )
 
 
-logging.basicConfig(
-    filename='api_hits.log',
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-
+# logger.basicConfig(
+#     filename='api_hits.log',
+#     format='%(asctime)s - %(levelname)s - %(message)s',
+#     level=logger.INFO
+# )
+logger = get_logger()
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(DEVICE)
 
 
-# # Log the device info
-# logging.info(f"Using device: {DEVICE}")
-
-# if DEVICE.type == "cuda":
-#     gpu_name = torch.cuda.get_device_name(0)
-#     logging.info(f"GPU name: {gpu_name}")
-#     memory_allocated = torch.cuda.memory_allocated(0) / 1024**3
-#     memory_reserved = torch.cuda.memory_reserved(0) / 1024**3
-#     logging.info(f"Memory Allocated: {memory_allocated:.2f} GB")
-#     logging.info(f"Memory Reserved: {memory_reserved:.2f} GB")
-# else:
-#     logging.warning("CUDA not available. Using CPU.")
 
 # Initialize MinIO client
 minio_client = Minio(
@@ -97,7 +91,7 @@ def upload_image_to_minio(patient_id,image_file, image_name): #Name,age,gender,
         bucket_name=BUCKET_NAME,
         object_name=object_name,
         data=BytesIO(image_file),
-        length=len(image_file)        # ✅ Must provide actual length
+        length=len(image_file)        
     )
 
     # Generate a presigned URL (valid for 1 hour)
@@ -192,9 +186,7 @@ def save_results_to_minio(patient_id, results, filename='results.json'):
 IMG_SIZE = 600
 NUM_CLASSES = 4
 BEST_MODEL_PATH = "model_paths/effinet_model_V2.pth"
-#BEST_MODEL_PATH = "efficientnet_b3_model_v15.pth"
 checkpoint = torch.load(BEST_MODEL_PATH, map_location=DEVICE,weights_only=False)
-
 def process_image_from_url(image_url):
     try:
         response = requests.get(image_url)
@@ -239,7 +231,7 @@ class BinaryClassifier_left_right(nn.Module):
                 nn.Sigmoid()
             )
         except Exception as e:
-            logging.error(f"Error initializing EfficientNet-B3: {e}")
+            logger.error(f"Error initializing EfficientNet-B3: {e}")
             raise
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -261,14 +253,13 @@ def preprocess_image_left_right(image_path: str) -> torch.Tensor:
         response = requests.get(image_path)
         response.raise_for_status()
         image = Image.open(io.BytesIO(response.content)).convert("RGB")
-        #image = Image.open(image_path).convert('RGB')
         image = transform(image)
         return image.unsqueeze(0)  # Add batch dimension
     except FileNotFoundError:
-        logging.error(f"Image file not found: {image_path}")
+        logger.error(f"Image file not found: {image_path}")
         raise
     except Exception as e:
-        logging.error(f"Error processing image {image_path}: {e}")
+        logger.error(f"Error processing image {image_path}: {e}")
         raise
 
 def predict_left_rigth_image(image_path: str, model: torch.nn.Module) -> str:
@@ -280,7 +271,7 @@ def predict_left_rigth_image(image_path: str, model: torch.nn.Module) -> str:
             #confidence = output.item() if output >= 0.5 else 1 - output.item()
         return prediction #f"Prediction: {prediction}, Confidence: {confidence:.2f}"
     except Exception as e:
-        logging.error(f"Error during prediction: {e}")
+        logger.error(f"Error during prediction: {e}")
         raise
 
 
@@ -350,7 +341,6 @@ def generate_result(predicted_class, confidence):
         "explanation": explanation,
         "Note": None , 
         "Risk_Factor": Risk_Factor   
-        # Placeholder for warning messages
     }
 
     # Add warnings based on the confidence and predicted class
@@ -381,7 +371,7 @@ async def run_inference(patient_id: str, left_image: UploadFile = File(...), rig
     transform = transforms.Compose([transforms.ToTensor()])
     start_time = time.time()
     try :
-        logging.info(f"[START] Inference API hit for patient: {patient_id} from {request.client.host}")
+        logger.info(f"[START] Inference API hit for patient: {patient_id} from {request.client.host}")
         # Upload the images to Azure Blob Storage
         left_image_url = upload_image_to_minio(patient_id, await left_image.read(), 'left_image.jpg')
         right_image_url = upload_image_to_minio(patient_id, await right_image.read(), 'right_image.jpg')
@@ -390,6 +380,7 @@ async def run_inference(patient_id: str, left_image: UploadFile = File(...), rig
         left_prediction= predict_single_image(model_1, left_image_url, transform_model_1)
         right_prediction= predict_single_image(model_1, right_image_url, transform_model_1)
         if left_prediction == "non-fundus" or right_prediction == "non-fundus":
+                logger.warning(f"Invalid image detected. Left: {left_prediction}, Right: {right_prediction}")
                 return JSONResponse(content={
                     "message": "One or more uploaded images are not valid fundus images. Please upload valid fundus images."
                 })
@@ -402,14 +393,17 @@ async def run_inference(patient_id: str, left_image: UploadFile = File(...), rig
         print(left_image_detection,right_image_detection)
         
         if left_image_detection == "Right" and right_image_detection == "Left":
+                logger.warning(f"Image swap detected: Left image is 'Right', Right image is 'Left'. Patient uploaded images in wrong order.")
                 return JSONResponse(content={
-                    "message": "The right image has been uploaded in place of the left image. Please reupload the correct images."
+                    "message": f"The right image has been uploaded in place of the left image. Please reupload the correct images wit id{patient_id}"
                 })
         if left_image_detection == "Left" and right_image_detection == "Left":
+                logger.warning(f"Both images identified as Left eye. Missing right eye image.")
                 return JSONResponse(content={
                     "message": "Both uploaded images are identified as left eye images. Please reupload the correct right eye image."
                 })
         if left_image_detection == "Right" and right_image_detection == "Right":
+                logger.warning(f"Both images identified as Right eye. Missing left eye image.")
                 return JSONResponse(content={
                     "message": "Both uploaded images are identified as right eye images. Please reupload the correct left eye image."
                 })
@@ -430,7 +424,7 @@ async def run_inference(patient_id: str, left_image: UploadFile = File(...), rig
         print(right_result)
         save_results_to_minio(patient_id, results)
         process_time = time.time() - start_time
-        logging.info(
+        logger.info(
             f"[SUCCESS] Processed inference for {patient_id} | Duration: {process_time:.2f}s"
         )
         
@@ -447,7 +441,6 @@ async def submit_feedback(data: dict):  # Receive JSON payload directly
         # Validate that both left_eye and right_eye data are present
         if not left_eye or not right_eye:
             raise HTTPException(status_code=400, detail="Invalid data: Missing 'left_eye' or 'right_eye' fields.")
-
         # Extract patient ID if provided
         patient_id = data.get("patient_id","default_patient_id")  # Replace with a fallback if not provided
         email_id=data.get("email_id")
@@ -515,7 +508,8 @@ async def submit_feedback(data: dict):  # Receive JSON payload directly
 
             # Commit the transaction
             connection.commit()
-            print(f"Data inserted successfully for patient id {patient_id}")
+            logger.info(f"Data inserted successfully for patient id {patient_id}")
+
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -529,6 +523,49 @@ async def submit_feedback(data: dict):  # Receive JSON payload directly
 
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
+@app.get("/get_data_from_api_logs")
+def get_api_logs():
+    return data_from_db("SELECT * FROM api_logs")
+
+@app.get("/get_data_from_db")
+def get_dr_data():
+    return data_from_db("SELECT * FROM diabetic_retinopathy")
+
+
+
+ALLOWED_PATHS_FOR_INSTRUMENTATION = {
+    "/get_data_from_api_logs",
+    "/get_data_from_db",
+    "/infer_for_diabetic_retinopathy/upload images"
+}
+
+# The path for the metrics endpoint itself
+METRICS_PATH = "/metrics" # Default, but good to have as a variable
+
+def should_instrument_callback(request: Request) -> bool:
+    path = request.url.path
+    # 1. Explicitly DO NOT instrument requests to the /metrics endpoint itself
+    if path == METRICS_PATH:
+        return False
+    # 2. Instrument other allowed paths
+    if path in ALLOWED_PATHS_FOR_INSTRUMENTATION:
+        return True
+    # 3. Do not instrument any other paths
+    return False
+
+# # Initialize Instrumentator
+# instrumentator = Instrumentator(
+   
+# )
+
+
+# instrumentator.instrument(
+#     app,
+#     should_instrument_hook=should_instrument_callback
+# ).expose(app, endpoint=METRICS_PATH) # You can specify the endpoint path for expose too
+#
+instrumentator = Instrumentator()
+instrumentator.instrument(app).expose(app)
 
 if __name__ == "__main__":
     import uvicorn 

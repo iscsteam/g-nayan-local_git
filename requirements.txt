@@ -16,4 +16,4 @@ minio
 torch
 torchvision
 mysql-connector-python
-#psycopg2
+prometheus-fastapi-instrumentator>=6.0.0 # <--- CHANGE THIS
