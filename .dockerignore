@@ -1,0 +1,60 @@
+# Git
+.git
+.gitignore
+
+# Environment files - IMPORTANT
+.env* # Catches .env, .env.local, .env.prod etc.
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv
+venv/
+env/
+ENV/
+
+# IDE and OS specific
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Test files and reports (if any)
+# htmlcov/
+# .pytest_cache/
+# .coverage
+# nosetests.xml
+# coverage.xml
+
+# Docker specific
+Dockerfile # Usually not ignored, but can be if generating it
+docker-compose.yml # If only Dockerfile is for the image itself
+
+# Local development artifacts
+# *.log # If logs are not meant to be part of the image, but api_hits.log is used by FileHandler
+# For api_hits.log, if it's created inside the container, it's fine.
+# If it's part of the build context and shouldn't be, then add it.
+# Assuming api_hits.log is runtime, so not ignoring it here.
+
+# Model paths - only if models are downloaded/mounted and not part of build context
+# model_paths/ # For now, assuming models are copied if in build context.
+
+# Requirements files if managed by a dependency manager that outputs its own lock files
+# Pipfile
+# Pipfile.lock
+# poetry.lock
+# pyproject.toml (if it contains dev dependencies you don't want)
+
+# Build artifacts
+# dist/
+# build/
+# *.egg-info/
+
+# Prometheus specific if downloaded locally and not part of app
+# prometheus.yml # This is likely a config file for prometheus itself, not the app.
+                 # If it's copied into the app image for some reason, decide if it should be.
+                 # For now, assuming it's external to the app image.
