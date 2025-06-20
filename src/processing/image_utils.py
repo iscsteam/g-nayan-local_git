@@ -45,7 +45,7 @@ def resize_maintain_aspect(image: Image.Image, desired_size: int) -> Image.Image
     new_size = tuple([int(x * ratio) for x in old_size])
     new_size = (max(1, new_size[0]), max(1, new_size[1]))
     try:
-        im = image.resize(new_size, Image.LANCZOS)
+        im = image.resize(new_size, Image.Resampling.LANCZOS) # Updated from Image.LANCZOS
     except Exception:
         return image
     new_im = Image.new("RGB", (desired_size, desired_size))

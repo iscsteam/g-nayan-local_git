@@ -1,28 +1,13 @@
 import os
 from dotenv import load_dotenv
-import mysql.connector
-from mysql.connector import Error
+# import mysql.connector # Not directly used
+# from mysql.connector import Error # No longer used
 import torch
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
+from typing import Optional
 
 load_dotenv()
-
-# Old connection function (to be deprecated/removed)
-def connection():
-    try:
-        conn = mysql.connector.connect(
-            host=os.getenv("MYSQL_HOST", "mysql"),
-            port=int(os.getenv("MYSQL_PORT", 3306)),
-            user=os.getenv("MYSQL_USER", "iscs"),
-            password=os.getenv("MYSQL_PASSWORD"),
-            database=os.getenv("MYSQL_DB")
-        )
-        # print("✅ Connected to MySQL (old method)") # Silencing print for cleaner output
-        return conn
-    except Error as e:
-        # print(f"❌ MySQL connection error (old method): {e}") # Silencing print
-        return None
 
 class DatabaseSettings(BaseModel):
     MYSQL_HOST: str = os.getenv("MYSQL_HOST", "mysql")
@@ -52,7 +37,7 @@ class AppSettings(BaseSettings):
         env_file = ".env"
         extra = "ignore" # Allow other env vars not defined in model
 
-_app_settings_instance = None
+_app_settings_instance: Optional[AppSettings] = None
 
 def get_app_settings() -> AppSettings:
     global _app_settings_instance

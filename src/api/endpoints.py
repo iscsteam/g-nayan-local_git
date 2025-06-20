@@ -1,10 +1,10 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException, Request, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, File, UploadFile, HTTPException, Request # Removed Depends
+# from fastapi.responses import JSONResponse # Removed JSONResponse
 from fastapi.concurrency import run_in_threadpool # For MinIO sync operations
 from PIL import Image
 from PIL import UnidentifiedImageError
 from io import BytesIO
-from typing import Dict, Any, List
+from typing import List # Removed Dict, Any
 
 # Application imports
 from src.api.schemas import (
@@ -23,8 +23,8 @@ from src.ml.inference import (
 )
 from src.services.object_store import upload_image_to_minio, save_results_to_minio
 from src.services.database import data_from_db, save_feedback_to_db
-from src.core.config import get_app_settings # For logger, potentially other settings
-from src.processing.image_utils import fetch_image_from_url # May not be needed if we pass PIL images
+# from src.core.config import get_app_settings # For logger, potentially other settings (currently unused)
+# from src.processing.image_utils import fetch_image_from_url # May not be needed if we pass PIL images (currently unused)
 
 # Get a logger instance (can be more sophisticated later from src.core.logger)
 import logging
@@ -50,7 +50,7 @@ async def run_inference_endpoint(
     left_image_upload: UploadFile = File(..., description="Left eye fundus image"),
     right_image_upload: UploadFile = File(..., description="Right eye fundus image"),
     request: Request = None # For logging client host if needed
-):
+) -> InferenceResponseSchema:
     try:
         client_host = request.client.host if request else "unknown"
         logger.info(f"[START] Inference API hit for patient: {patient_id} from {client_host}")
@@ -172,7 +172,7 @@ async def run_inference_endpoint(
 
 
 @router.post("/submit_feedback_from_frontend/from_json_to_db", response_model=MessageResponse)
-async def submit_feedback_endpoint(feedback: FeedbackSchema):
+async def submit_feedback_endpoint(feedback: FeedbackSchema) -> MessageResponse:
     try:
         # The FeedbackSchema already validates the structure.
         # save_feedback_to_db expects feedback_data as a dict, patient_id, and email_id.
@@ -193,23 +193,25 @@ async def submit_feedback_endpoint(feedback: FeedbackSchema):
         raise HTTPException(status_code=500, detail=f"Failed to save feedback: {str(e)}")
 
 
-@router.get("/get_data_from_api_logs", response_model=List[ApiLogEntrySchema]) # Define a more specific response model later
-async def get_api_logs_endpoint():
+@router.get("/get_data_from_api_logs", response_model=List[ApiLogEntrySchema])
+async def get_api_logs_endpoint(skip: int = 0, limit: int = 100) -> List[ApiLogEntrySchema]:
     try:
         # Assuming data_from_db is synchronous
-        logs = await run_in_threadpool(data_from_db, "SELECT * FROM api_logs") # Basic query
+        query = "SELECT * FROM api_logs ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+        logs = await run_in_threadpool(data_from_db, query, (limit, skip))
         return logs
     except Exception as e:
-        logger.error(f"Error fetching API logs: {e}", exc_info=True)
+        logger.error(f"Error fetching API logs (skip={skip}, limit={limit}): {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve API logs.")
 
 
-@router.get("/get_data_from_db", response_model=List[DiabeticRetinopathyDbEntrySchema]) # Define a more specific response model later
-async def get_dr_data_endpoint():
+@router.get("/get_data_from_db", response_model=List[DiabeticRetinopathyDbEntrySchema])
+async def get_dr_data_endpoint(skip: int = 0, limit: int = 100) -> List[DiabeticRetinopathyDbEntrySchema]:
     try:
         # Assuming data_from_db is synchronous
-        dr_data = await run_in_threadpool(data_from_db, "SELECT * FROM diabetic_retinopathy") # Basic query
+        query = "SELECT * FROM diabetic_retinopathy ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+        dr_data = await run_in_threadpool(data_from_db, query, (limit, skip))
         return dr_data
     except Exception as e:
-        logger.error(f"Error fetching DR data: {e}", exc_info=True)
+        logger.error(f"Error fetching DR data (skip={skip}, limit={limit}): {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve diabetic retinopathy data.")

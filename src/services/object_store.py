@@ -1,18 +1,21 @@
-import io
+# import io # Redundant as BytesIO is imported directly
 import json
 from datetime import timedelta
 from minio import Minio
 from minio.error import S3Error # Keep S3Error for specific error handling if needed
-from typing import Any # For BytesIO type hint
+from typing import Dict, Any, Optional # Added Dict, Any, Optional
 from io import BytesIO # Explicit import for clarity
+import logging # Added for logging
+
+logger = logging.getLogger(__name__) # Added logger instance
 
 # Global Minio client and bucket name, to be initialized in lifespan from config
-minio_client: Minio = None # type: ignore
-BUCKET_NAME: str = None # type: ignore
+minio_client: Optional[Minio] = None
+BUCKET_NAME: Optional[str] = None
 
 # Placeholder for initializing client and bucket name from config
 # This will be called from the lifespan event
-def initialize_minio_client(endpoint: str, access_key: str, secret_key: str, bucket_name: str, secure: bool = False):
+def initialize_minio_client(endpoint: str, access_key: str, secret_key: str, bucket_name: str, secure: bool = False) -> None:
     global minio_client, BUCKET_NAME
     minio_client = Minio(
         endpoint,
@@ -26,11 +29,11 @@ def initialize_minio_client(endpoint: str, access_key: str, secret_key: str, buc
         found = minio_client.bucket_exists(BUCKET_NAME)
         if not found:
             minio_client.make_bucket(BUCKET_NAME)
-            print(f"Bucket '{BUCKET_NAME}' created.")
+            logger.info(f"Bucket '{BUCKET_NAME}' created.")
         else:
-            print(f"Bucket '{BUCKET_NAME}' already exists.")
+            logger.info(f"Bucket '{BUCKET_NAME}' already exists.")
     except S3Error as e:
-        print(f"Error initializing MinIO bucket: {e}")
+        logger.error(f"Error initializing MinIO bucket '{BUCKET_NAME}': {e}", exc_info=True)
         # Potentially raise an error here to stop app startup if MinIO is critical
         raise
 
@@ -55,12 +58,12 @@ def upload_image_to_minio(patient_id: str, image_bytes: bytes, image_name: str) 
         )
         return image_url
     except S3Error as e:
-        print(f"MinIO S3Error during image upload: {e}")
+        logger.error(f"MinIO S3Error during image upload for patient {patient_id}, image {image_name}: {e}", exc_info=True)
         # Consider raising a custom exception or HTTPException if in API context
         raise Exception(f"Failed to upload image {image_name} to MinIO. {e}")
 
 
-def save_results_to_minio(patient_id: str, results: dict, filename: str = 'results.json') -> None:
+def save_results_to_minio(patient_id: str, results: Dict[str, Any], filename: str = 'results.json') -> None:
     if not minio_client or not BUCKET_NAME:
         raise ConnectionError("MinIO client not initialized. Call initialize_minio_client first.")
 
@@ -77,8 +80,8 @@ def save_results_to_minio(patient_id: str, results: dict, filename: str = 'resul
             length=len(json_bytes),
             content_type="application/json"
         )
-        print(f"Successfully saved results to {object_name} in bucket {BUCKET_NAME}")
+        logger.info(f"Successfully saved results to {object_name} in bucket {BUCKET_NAME} for patient {patient_id}")
     except S3Error as e:
-        print(f"MinIO S3Error during results save: {e}")
+        logger.error(f"MinIO S3Error during results save for patient {patient_id}: {e}", exc_info=True)
         # Consider raising a custom exception
         raise Exception(f"Failed to save results for {patient_id} to MinIO. {e}")

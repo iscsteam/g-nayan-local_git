@@ -1,5 +1,7 @@
 import logging
 from datetime import datetime
+from typing import Optional
+from mysql.connector.abstracts import MySQLConnectionAbstract, MySQLCursorAbstract
 # To get DB connection in a way that's compatible with the new structure
 from src.services.database import get_db_connection, DBError # Assuming DBError is mysql.connector.Error
 
@@ -7,33 +9,31 @@ from src.services.database import get_db_connection, DBError # Assuming DBError 
 _logging_configured = False
 
 class MySQLHandler(logging.Handler):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.conn = None
-        self.cursor = None
+        self.conn: Optional[MySQLConnectionAbstract] = None
+        self.cursor: Optional[MySQLCursorAbstract] = None
         # Defer connection acquisition to the first emit, or manage externally
         # For now, let's try to connect on init but handle failure gracefully.
         try:
             self._connect()
         except Exception as e:
             # Using print here as logger itself is not yet configured
-            print(f"MySQLHandler: Failed to connect during init: {e}. Will attempt reconnect on emit.")
+            print(f"MySQLHandler: Failed to connect during init: {e}. Will attempt reconnect on emit.") # Keep this print for critical init failure
 
-    def _connect(self):
+    def _connect(self) -> None:
         # Close existing connection if any
         self._close_conn()
         try:
             self.conn = get_db_connection() # Uses the refactored DB connection logic
             if self.conn:
                 self.cursor = self.conn.cursor()
-                # print("MySQLHandler: Successfully connected to DB.") # Debug
-        except DBError as e:
+        except DBError: # Keep 'e' if you log it, otherwise it's unused. Removed print, so e is unused.
             self.conn = None # Ensure conn is None if connection fails
             self.cursor = None
-            # print(f"MySQLHandler: Error connecting to DB: {e}") # Debug
             # Not raising error here, will try to reconnect or skip logging in emit
 
-    def _close_conn(self):
+    def _close_conn(self) -> None:
         if self.cursor:
             try:
                 self.cursor.close()
@@ -47,17 +47,15 @@ class MySQLHandler(logging.Handler):
                 pass # Ignore errors on close
             self.conn = None
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         # Try to connect if not connected
         if not self.conn or not self.cursor:
             try:
                 self._connect()
-            except Exception as e: # pragma: no cover
-                # print(f"MySQLHandler: Failed to connect on emit: {e}. Log will be skipped.") # Debug
+            except Exception: # pragma: no cover; Removed 'e' as it's not used, and removed print
                 return # Skip logging if can't connect
 
         if not self.conn or not self.cursor: # Still no connection
-             # print("MySQLHandler: No DB connection, skipping log.") # Debug
              return
 
 
@@ -71,34 +69,30 @@ class MySQLHandler(logging.Handler):
                 (log_time, level, msg)
             )
             self.conn.commit()
-        except DBError as e: # Catch specific DB errors
-            # print(f"MySQLHandler: Failed to log to DB: {e}. Attempting to reconnect.") # Debug
+        except DBError: # Keep 'e' if you log it. Removed print, so 'e' is unused.
             # Attempt to reconnect and retry once
             try:
                 self._connect() # Reconnect
-                if self.conn and self.cursor:
+                if self.conn and self.cursor: # Check added for self.cursor as well
                     self.cursor.execute(
                         "INSERT INTO api_logs (timestamp, level, message) VALUES (%s, %s, %s)",
                         (log_time, level, msg)
                     )
                     self.conn.commit()
                 else: # pragma: no cover
-                    # print("MySQLHandler: Reconnect failed, log skipped.") # Debug
                     pass
-            except Exception as retry_e: # pragma: no cover
-                # print(f"MySQLHandler: Failed to log to DB after retry: {retry_e}") # Debug
+            except Exception: # pragma: no cover; Removed 'retry_e' as it's not used, and removed print
                 # Consider logging this failure to a fallback (e.g., file or console)
                 pass # Skip if retry fails
-        except Exception as e: # Catch any other unexpected errors # pragma: no cover
-            # print(f"MySQLHandler: Unexpected error during emit: {e}") # Debug
+        except Exception: # pragma: no cover; Removed 'e' as it's not used, and removed print
             pass
 
 
-    def close(self):
+    def close(self) -> None:
         self._close_conn()
         super().close()
 
-def setup_logging():
+def setup_logging() -> None:
     # This function should be called once, e.g., in lifespan startup.
     global _logging_configured
     if _logging_configured:
@@ -140,10 +134,8 @@ def setup_logging():
         db_handler.setFormatter(formatter) # You might want a different format for DB
         db_handler.setLevel(logging.INFO) # Log INFO and above to DB
         root_logger.addHandler(db_handler)
-        # print("MySQL logging handler configured.") # Debug
     except Exception as e: # pragma: no cover
         root_logger.error(f"Failed to initialize MySQL logging handler: {e}", exc_info=True)
-        # print(f"Failed to initialize MySQL logging handler: {e}") # Debug
 
     _logging_configured = True
     root_logger.info("Logging configured (console, file, and potentially MySQL).")
@@ -154,5 +146,5 @@ def setup_logging():
 # logger.info("This is a test log message.")
 
 # If you want a specific named logger that's not root, but inherits root config:
-# def get_custom_logger(name: str):
+# def get_custom_logger(name: str) -> logging.Logger:
 #    return logging.getLogger(name)

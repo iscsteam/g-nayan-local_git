@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 from torchvision import models
-from efficientnet_pytorch import EfficientNet # May need to adjust if this is a custom import
+from efficientnet_pytorch import EfficientNet
 
 # model-1 for fundus or non funding images classifications
 class BinaryClassifier(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super(BinaryClassifier, self).__init__()
         # Recommended: Use weights=models.ResNet18_Weights.DEFAULT for latest best weights
         self.model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
@@ -22,7 +22,7 @@ class BinaryClassifier(nn.Module):
         return self.model(x)
 
 class EfficientNetB3Model(nn.Module):
-    def __init__(self, num_classes: int):
+    def __init__(self, num_classes: int) -> None:
         super(EfficientNetB3Model, self).__init__()
         # Recommended: Use weights=models.EfficientNet_B3_Weights.DEFAULT for latest best weights if available
         # Or ensure 'efficientnet-b3' string corresponds to a valid pretrained model in your library version

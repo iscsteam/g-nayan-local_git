@@ -1,15 +1,19 @@
 import mysql.connector
 from mysql.connector import pooling # Import the pooling module
 from mysql.connector import Error as DBError
+from mysql.connector.abstracts import MySQLConnectionAbstract, MySQLCursorAbstract
 from typing import List, Any, Optional, Dict
 import pytz
 from datetime import datetime
+import logging # Added for logging
 from src.core.config import get_app_settings
+
+logger = logging.getLogger(__name__) # Added logger instance
 
 # Global variable for the connection pool
 db_pool: Optional[pooling.MySQLConnectionPool] = None # Type hint for clarity
 
-def init_db_pool(config: Dict[str, Any], pool_size: int = 5, pool_name: str = "mypool"):
+def init_db_pool(config: Dict[str, Any], pool_size: int = 5, pool_name: str = "mypool") -> None:
     # This function will be called during app startup (lifespan event)
     # to initialize the actual connection pool.
     global db_pool
@@ -31,6 +35,7 @@ def init_db_pool(config: Dict[str, Any], pool_size: int = 5, pool_name: str = "m
         # conn_test.close()
         print(f"Database pool '{pool_name}' initialized successfully.")
     except DBError as e:
+        # Using print here as this is early startup, logger might not be fully set.
         print(f"Failed to initialize database pool: {e}")
         db_pool = None # Ensure pool is None if initialization fails
         raise # Re-raise the error to potentially stop app startup if DB is critical
@@ -40,55 +45,52 @@ def init_db_pool(config: Dict[str, Any], pool_size: int = 5, pool_name: str = "m
         raise
 
 
-def close_db_pool():
+def close_db_pool() -> None:
     # For mysql.connector.pooling, explicit closing of the pool isn't typically done
     # as connections are managed by daemon threads. However, if other pooling libraries
     # were used, a close method would be relevant here.
     # This function is provided for completeness or future adaptation.
     global db_pool
     if db_pool:
+        # Using print as this is shutdown, logger state might be uncertain.
         print("Closing database pool (conceptually, as mysql.connector's pool is self-managing).")
         # If there were an explicit pool.close() method, it would be called here.
         db_pool = None
 
 
-def get_db_connection():
+def get_db_connection() -> MySQLConnectionAbstract:
     global db_pool
     if not db_pool:
         # This case should ideally not happen if lifespan initializes the pool correctly.
-        # It indicates a problem with application startup or configuration.
-        print("Database pool not initialized. Attempting a direct fallback connection (not recommended for production).")
+        logger.warning("Database pool not initialized. Attempting a direct fallback connection (not recommended for production).")
         # Fallback to direct connection (from previous refactoring step, for resilience during dev)
-        # This fallback should be removed once pooling is stable and mandatory.
         settings = get_app_settings()
         try:
-            conn = mysql.connector.connect(
+            conn_fallback = mysql.connector.connect(
                 host=settings.DB.MYSQL_HOST,
                 port=settings.DB.MYSQL_PORT,
                 user=settings.DB.MYSQL_USER,
                 password=settings.DB.MYSQL_PASSWORD,
                 database=settings.DB.MYSQL_DB
             )
-            return conn
+            return conn_fallback
         except DBError as e:
-            print(f"Database connection error (direct fallback): {e}")
+            logger.error(f"Database connection error (direct fallback): {e}", exc_info=True)
             raise # Re-raise the exception to be handled by the caller
 
     # Get a connection from the initialized pool
     try:
-        conn = db_pool.get_connection()
-        # print("Connection obtained from pool.") # Debug
-        return conn
+        conn_from_pool = db_pool.get_connection()
+        return conn_from_pool
     except DBError as e:
-        print(f"Error getting connection from pool: {e}")
+        logger.error(f"Error getting connection from pool: {e}", exc_info=True)
         # Handle pool exhaustion or other pool errors
-        # For example, could implement retries or raise a specific service unavailable error
         raise Exception(f"Failed to get database connection from pool: {e}") # Raise a more generic server error
 
 
 def data_from_db(query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
-    conn = None
-    cursor = None
+    conn: Optional[MySQLConnectionAbstract] = None
+    cursor: Optional[MySQLCursorAbstract] = None
     try:
         conn = get_db_connection() # Gets connection from pool (or fallback)
         cursor = conn.cursor(dictionary=True)
@@ -96,8 +98,7 @@ def data_from_db(query: str, params: Optional[tuple] = None) -> List[Dict[str, A
         result = cursor.fetchall()
         return result
     except Exception as e: # Catching general Exception as get_db_connection might raise non-DBError too
-        # Log the original error for debugging
-        print(f"Error executing query '{query[:100]}...': {e}")
+        logger.error(f"Error executing query '{query[:100]}...': {e}", exc_info=True)
         raise # Re-raise the caught exception to be handled by API layer
     finally:
         if cursor:
@@ -105,7 +106,7 @@ def data_from_db(query: str, params: Optional[tuple] = None) -> List[Dict[str, A
         if conn:
             conn.close() # Returns connection to the pool
 
-def save_feedback_to_db(feedback_data: Dict[str, Any], patient_id: str, email_id: Optional[str]) -> None:
+def save_feedback_to_db(feedback_data: Dict[str, Any], patient_id: str, email_id: Optional[str] = None) -> None:
     left_eye = feedback_data.get("left_eye")
     right_eye = feedback_data.get("right_eye")
 
@@ -124,10 +125,15 @@ def save_feedback_to_db(feedback_data: Dict[str, Any], patient_id: str, email_id
     kolkata_tz = pytz.timezone('Asia/Kolkata')
     kolkata_now_str = utc_now.astimezone(kolkata_tz).strftime('%Y-%m-%d %H:%M:%S')
 
-    records_to_insert = []
+    records_to_insert: List[Dict[str, Any]] = []
     for eye_identifier_suffix, eye_data_dict in [("_left", left_eye), ("_right", right_eye)]:
+        if not eye_data_dict: # Ensure eye_data_dict is not None
+            # Or raise ValueError if an eye's data is mandatory
+            logger.warning(f"Missing eye data for {eye_identifier_suffix} in feedback for patient {patient_id}")
+            continue
+
         record = {
-            "patient_id": str(patient_id) + eye_identifier_suffix,
+            "patient_id": str(patient_id) + eye_identifier_suffix, # Ensure patient_id is str
             "predicted_class": eye_data_dict["predicted_class"],
             "stage": eye_data_dict["Stage"],
             "confidence": eye_data_dict["confidence"],
@@ -137,13 +143,19 @@ def save_feedback_to_db(feedback_data: Dict[str, Any], patient_id: str, email_id
             "review": eye_data_dict.get("review"),
             "feedback": eye_data_dict.get("feedback"),
             "doctors_diagnosis": eye_data_dict.get("doctors_diagnosis"),
-            "email_id": email_id,
+            "email_id": email_id, # Already Optional[EmailStr]
             "timestamp": kolkata_now_str
         }
         records_to_insert.append(record)
 
-    conn = None
-    cursor = None
+    if not records_to_insert: # If both eye_data_dict were None or invalid
+        logger.warning(f"No valid records to insert for feedback for patient {patient_id}")
+        # Depending on requirements, could raise ValueError here or return
+        return
+
+
+    conn: Optional[MySQLConnectionAbstract] = None
+    cursor: Optional[MySQLCursorAbstract] = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -157,8 +169,8 @@ def save_feedback_to_db(feedback_data: Dict[str, Any], patient_id: str, email_id
             try:
                 conn.rollback()
             except DBError as rb_err: # pragma: no cover (difficult to test rollback failure)
-                 print(f"Error during rollback: {rb_err}")
-        print(f"Database error during feedback submission for patient {patient_id}: {e}")
+                 logger.error(f"Error during rollback for patient {patient_id}: {rb_err}", exc_info=True)
+        logger.error(f"Database error during feedback submission for patient {patient_id}: {e}", exc_info=True)
         raise # Re-raise to be caught by API layer
     finally:
         if cursor:

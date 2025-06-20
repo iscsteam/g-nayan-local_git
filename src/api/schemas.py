@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional # Removed Dict
 
 class EyeResultBase(BaseModel):
     predicted_class: int
@@ -43,7 +43,7 @@ class ApiLogEntrySchema(BaseModel):
     message: str
 
     class Config:
-        orm_mode = True # Compatibility if using ORM results directly
+        from_attributes = True # Compatibility if using ORM results directly (orm_mode deprecated)
 
 # Schema for Diabetic Retinopathy DB entry
 class DiabeticRetinopathyDbEntrySchema(BaseModel):
@@ -61,4 +61,4 @@ class DiabeticRetinopathyDbEntrySchema(BaseModel):
     timestamp: Optional[datetime] = None # Assuming it's fetched as datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True # orm_mode deprecated

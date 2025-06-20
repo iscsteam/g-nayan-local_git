@@ -1,13 +1,13 @@
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware # If still needed
+# from starlette.middleware.sessions import SessionMiddleware # If still needed
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # Application imports
 from src.api.endpoints import router as api_router
 from src.core.lifespan import lifespan # Manages startup/shutdown
-from src.core.config import get_app_settings # To get settings if needed for main app config
+# from src.core.config import get_app_settings # To get settings if needed for main app config (currently unused)
 
 # Get app settings if needed for app initialization (e.g. title, version from config)
 # settings = get_app_settings() # Uncomment if used for app = FastAPI(...)
@@ -22,7 +22,7 @@ app = FastAPI(
 # Middleware
 # Consider if SessionMiddleware is truly needed for your API.
 # If not, it can be removed. It adds overhead and is for stateful sessions.
-app.add_middleware(SessionMiddleware, secret_key=get_app_settings().FASTAPI_SECRET_KEY)
+# app.add_middleware(SessionMiddleware, secret_key=get_app_settings().FASTAPI_SECRET_KEY)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], # Configure this more restrictively for production
@@ -67,7 +67,7 @@ instrumentator.instrument(
 
 # Root path for basic check
 @app.get("/", tags=["Root"])
-async def read_root():
+async def read_root() -> dict[str, str]:
     return {"message": "Welcome to the Diabetic Retinopathy Detection API!"}
 
 

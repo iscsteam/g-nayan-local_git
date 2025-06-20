@@ -1,6 +1,6 @@
 import torch
-import torch.nn as nn
-from torchvision import transforms # Ensure this is here for the transform
+# import torch.nn as nn # Not directly used, functional is used.
+# from torchvision import transforms # Not directly used, get_image_transform_for_main_model is used
 from PIL import Image
 from typing import Tuple, Dict, Any
 
@@ -25,8 +25,7 @@ device: torch.device = None
 # Transformation for the original fundus model (ResNet18 based)
 # This was `transform_model_1` in main.py
 # It's simpler as preprocessing is now more explicit in preprocess_image_for_fundus_model
-# fundus_model_transform = transforms.Compose([transforms.ToTensor()])
-# Actually, preprocess_image_for_fundus_model already includes ToTensor and resizing.
+# preprocess_image_for_fundus_model already includes ToTensor and resizing.
 
 # Transformation for the main DR model (EfficientNetB3 based)
 # This was just `transforms.ToTensor()` in main.py's `infer` function,
@@ -35,7 +34,7 @@ device: torch.device = None
 main_dr_image_transform = get_image_transform_for_main_model()
 
 
-def load_all_models():
+def load_all_models() -> None:
     global fundus_model, dr_model, left_right_model, device
 
     settings = get_app_settings()
@@ -59,8 +58,7 @@ def load_all_models():
 
 
     # 2. Load Main DR Classification model (EfficientNetB3 based)
-    # NUM_CLASSES was a global in main.py, should be derived from CATEGORY_MAPPING or config
-    num_classes_dr = len(CATEGORY_MAPPING)
+    num_classes_dr = len(CATEGORY_MAPPING) # Derived from CATEGORY_MAPPING
     dr_model = EfficientNetB3Model(num_classes=num_classes_dr)
     try:
         # Assuming checkpoint contains model_state_dict as in main.py
@@ -137,36 +135,20 @@ def generate_full_result_details(predicted_class: int, confidence: float) -> Dic
     stage = CATEGORY_MAPPING.get(predicted_class, 'Unknown stage') # Use .get for safety
     confidence_percentage = round(confidence * 100, 2)
 
-    # Risk Factor calculation from main.py
-    # if predicted_class == 3:  # Proliferative Diabetic Retinopathy
-    #     risk_factor = round(confidence * 100, 2) # This seems off, usually risk is associated with severity not confidence in PDR
-    # else:
-    #     risk_factor = round((1 - confidence) * 100, 2) # This implies (1-confidence) is risk for non-PDR stages
-    # The original Risk_Factor logic seems a bit counter-intuitive for class 3.
-    # Let's re-evaluate. If confidence is high for PDR (class 3), risk should be high.
-    # If confidence is high for No DR (class 0), risk should be low.
-    # A common way: for severe classes, risk ~ confidence. For mild/no class, risk ~ (1-confidence of no DR) or specific metrics.
-    # The original logic for "Risk_Factor" was:
-    # if predicted_class == 3: Risk_Factor = confidence * 100
-    # else: Risk_Factor = (1 - confidence) * 100
-    # This seems to indicate "Risk of what?". If it's "Risk of having this stage", then for class 0, high confidence means low risk of progression.
-    # Let's stick to the original logic for now and it can be reviewed by a domain expert.
-
+    # Risk Factor calculation (based on original logic, slightly adjusted for class 0)
+    # This logic may need review by a domain expert for clinical accuracy.
     if predicted_class == 3: # Proliferative Diabetic Retinopathy (PDR)
+        # For PDR, higher confidence in this stage implies higher risk.
         risk_factor_percent = round(confidence * 100, 2)
     elif predicted_class == 0: # No DR
-        # If confidence is high for "No DR", then "Risk_Factor of progressing" is low.
-        # The original code used (1-confidence)*100. Let's assume this is "risk of being misdiagnosed or progressing"
-        risk_factor_percent = round((1-confidence)*100,2) if confidence < 0.95 else round(confidence*10,2) # Adjusted slightly
-    else: # Mild or Moderate NPDR
-        # For these, higher confidence in this stage means that is the current risk state.
-        # The original code used (1-confidence)*100. This is confusing.
-        # If it means "chance of this NOT being the state", it's (1-confidence).
-        # If it means "risk of progression from this state", that's a different metric.
-        # Let's assume for now, risk_factor is tied to the severity of the class itself if detected with high confidence.
-        # Reverting to original logic for now:
+        # For No DR, higher confidence means lower risk.
+        # Original: (1-confidence)*100. Adjustment: if very high confidence in No DR, risk is low.
+        risk_factor_percent = round((1 - confidence) * 100, 2) if confidence < 0.95 else round(confidence * 10, 2)
+    else: # Mild or Moderate NPDR (classes 1 and 2)
+        # Original logic for these classes was (1-confidence)*100.
+        # This implies risk_factor is "chance of this NOT being the state" or "chance of misdiagnosis".
+        # Sticking to this interpretation for now.
         risk_factor_percent = round((1 - confidence) * 100, 2)
-
 
     result = {
         "predicted_class": int(predicted_class),
