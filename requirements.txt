@@ -1,19 +1,39 @@
-fastapi
-pydantic
-Pillow
-numpy
-opencv-python
-requests
-uvicorn
-python-multipart
-pyyaml
-starlette
-itsdangerous
-python-dotenv
-datetime
-efficientnet_pytorch
-minio
-torch
-torchvision
-mysql-connector-python
-#psycopg2
+# FastAPI and related
+fastapi==0.111.0
+uvicorn==0.29.0
+starlette==0.37.2
+python-multipart==0.0.9
+
+# Pydantic (ensure compatibility with pydantic-settings)
+pydantic==2.7.1
+pydantic-settings==2.2.1
+
+# Data handling & ML
+Pillow==10.3.0
+numpy==1.26.4
+opencv-python==4.9.0.80
+# For torch and torchvision, CPU versions are specified.
+# If GPU is intended, these versions need to be appropriate for the target CUDA version.
+torch==2.2.2
+torchvision==0.17.2
+efficientnet-pytorch==0.7.1
+
+# HTTP client & Utilities
+requests==2.31.0
+PyYAML==6.0.1
+itsdangerous==2.1.2 # Often a sub-dependency, good to pin
+python-dotenv==1.0.1
+pytz==2024.1 # For timezone operations
+
+# Database
+mysql-connector-python==8.3.0
+
+# Object Storage
+minio==7.2.7
+
+# Monitoring
+prometheus-fastapi-instrumentator==7.0.0
+
+# Testing
+pytest==8.1.1
+httpx==0.27.0 # Required by TestClient

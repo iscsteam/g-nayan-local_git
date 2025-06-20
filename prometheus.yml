@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'fastapi_local_dr'
+    static_configs:
+      - targets: ['fastapi:8000'] # or 'fastapi:8000' if it's a container
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+

@@ -1,0 +1,46 @@
+2025-05-05 20:00:53,960 - INFO - [START] Inference API hit for patient: 35 from 172.19.0.1
+2025-05-05 20:01:11,586 - INFO - [SUCCESS] Processed inference for 35 | Duration: 17.63s
+2025-05-05 20:11:26,221 - INFO - Data inserted successfully for patient id 181
+2025-05-05 20:14:25,312 - INFO - [START] Inference API hit for patient: 189 from 172.19.0.1
+2025-05-05 20:14:36,011 - WARNING - Both images identified as Right eye. Missing left eye image.
+2025-05-05 20:27:48,741 - INFO - [START] Inference API hit for patient: 46 from 172.19.0.1
+2025-05-05 20:27:58,020 - WARNING - Both images identified as Right eye. Missing left eye image.
+2025-05-05 21:04:14,883 - INFO - [START] Inference API hit for patient: 49 from 172.19.0.1
+2025-05-05 21:04:23,615 - WARNING - Both images identified as Left eye. Missing right eye image.
+2025-05-06 05:03:04,500 - INFO - [START] Inference API hit for patient: 56 from 172.19.0.1
+2025-05-06 05:03:13,380 - INFO - [SUCCESS] Processed inference for 56 | Duration: 8.88s
+2025-05-06 06:31:54,051 - INFO - [START] Inference API hit for patient: 123 from 172.19.0.1
+2025-05-06 06:32:10,363 - INFO - [SUCCESS] Processed inference for 123 | Duration: 16.31s
+2025-05-06 06:36:03,034 - INFO - [START] Inference API hit for patient: 678 from 172.19.0.1
+2025-05-06 06:36:07,747 - INFO - [SUCCESS] Processed inference for 678 | Duration: 4.71s
+2025-05-06 11:51:08,838 - INFO - [START] Inference API hit for patient: 123 from 172.19.0.1
+2025-05-06 11:51:23,536 - INFO - [SUCCESS] Processed inference for 123 | Duration: 14.70s
+2025-05-06 12:09:58,613 - INFO - [START] Inference API hit for patient: 908 from 172.19.0.1
+2025-05-06 12:10:00,230 - INFO - [SUCCESS] Processed inference for 908 | Duration: 1.62s
+2025-05-07 08:17:52,617 - INFO - [START] Inference API hit for patient: 113 from 172.19.0.1
+2025-05-07 08:18:06,168 - WARNING - Both images identified as Left eye. Missing right eye image.
+2025-05-07 09:05:03,108 - INFO - Data inserted successfully for patient id 181
+2025-05-07 09:15:53,522 - INFO - [START] Inference API hit for patient: 119 from 172.19.0.1
+2025-05-07 09:15:55,596 - WARNING - Both images identified as Right eye. Missing left eye image.
+2025-05-07 09:16:07,769 - INFO - [START] Inference API hit for patient: 119 from 172.19.0.1
+2025-05-07 09:16:12,029 - INFO - [SUCCESS] Processed inference for 119 | Duration: 4.26s
+2025-05-07 09:47:49,318 - INFO - [START] Inference API hit for patient: 131 from 172.19.0.1
+2025-05-07 09:47:51,183 - INFO - [SUCCESS] Processed inference for 131 | Duration: 1.87s
+2025-05-07 09:48:02,810 - INFO - [START] Inference API hit for patient: 132 from 172.19.0.1
+2025-05-07 09:48:04,642 - INFO - [SUCCESS] Processed inference for 132 | Duration: 1.83s
+2025-05-07 09:48:13,446 - INFO - [START] Inference API hit for patient: 133 from 172.19.0.1
+2025-05-07 09:48:14,826 - WARNING - Both images identified as Left eye. Missing right eye image.
+2025-05-07 09:48:37,245 - INFO - [START] Inference API hit for patient: 133 from 172.19.0.1
+2025-05-07 09:48:38,472 - WARNING - Both images identified as Left eye. Missing right eye image.
+2025-05-07 09:48:53,492 - INFO - [START] Inference API hit for patient: 133 from 172.19.0.1
+2025-05-07 09:48:54,739 - WARNING - Both images identified as Left eye. Missing right eye image.
+2025-05-07 09:49:07,766 - INFO - [START] Inference API hit for patient: 133 from 172.19.0.1
+2025-05-07 09:49:09,924 - INFO - [SUCCESS] Processed inference for 133 | Duration: 2.16s
+2025-05-07 11:36:42,105 - INFO - [START] Inference API hit for patient: 133 from 172.19.0.1
+2025-05-07 11:36:51,510 - INFO - [SUCCESS] Processed inference for 133 | Duration: 9.41s
+2025-05-07 11:44:40,588 - INFO - [START] Inference API hit for patient: 136 from 172.19.0.1
+2025-05-07 11:44:44,663 - INFO - [SUCCESS] Processed inference for 136 | Duration: 4.07s
+2025-05-07 14:13:59,749 - INFO - [START] Inference API hit for patient: 139 from 172.19.0.1
+2025-05-07 14:14:03,405 - INFO - [SUCCESS] Processed inference for 139 | Duration: 3.66s
+2025-05-07 14:47:16,767 - INFO - Data inserted successfully for patient id 181
+2025-05-07 14:47:54,285 - INFO - Data inserted successfully for patient id 1811212
